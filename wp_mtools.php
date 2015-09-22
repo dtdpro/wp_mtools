@@ -23,15 +23,15 @@ class MTools {
         add_action( 'admin_init', array($this,'mt_admin_init') );
 		add_action( 'admin_menu', array($this,'mt_admin_menu') );
 		add_action( 'wp_loaded', array( &$this, 'mt_loaded' ));
-    }       
-    
-	function mt_admin_init() {
-		global $pagenow;
-		
+
 		$this->posttype = 'post';
 		if (isset($_GET['post_type'])) {
 			$this->posttype = $_GET['post_type'];
 		}
+    }       
+    
+	function mt_admin_init() {
+		global $pagenow;
 
 		// Post List
 		if ( $pagenow=='edit.php') {
@@ -178,7 +178,7 @@ class MTools {
 		$url = remove_query_arg( array( 'action', 'action2', 'tags_input', 'post_author','comment_status', 'ping_status', '_status',  'post', 'bulk_edit', 'post_view'), $url );
 		$url = add_query_arg( array( 'action' => 'mt-clone-single', 'post' => $post->ID, 'redirect' => $_SERVER['REQUEST_URI'] ), $url );
 
-		$actions['clone'] =  '<a href=\''.$url.'\'>'.__('Clone').'</a>';
+		$actions['duplicate'] =  '<a href=\''.$url.'\'>'.__('Duplicate').'</a>';
 
 		return $actions;
 	}
@@ -319,7 +319,7 @@ class MTools {
 	}
 
 	function mt_clone_single_post( $id ) {
-		// From Clone Posts, http://wordpress.org/extend/plugins/clone-posts/, by Lukasz Kostrzewa, Licsnse GPL v2
+		// From Clone Posts, http://wordpress.org/extend/plugins/clone-posts/, by Lukasz Kostrzewa, License GPL v2
 
 		$p = get_post( $id );
 		if ($p == null) return false;
@@ -348,6 +348,38 @@ class MTools {
 
 		$format = get_post_format( $id );
 		set_post_format($newid, $format);
+
+        // From Duplicate Post, https://wordpress.org/plugins/duplicate-post/, by Enrico Battocchi, License GPL v2
+		// MetaKeys
+		$meta_keys = get_post_custom_keys($id);
+		if (!empty($meta_keys)) {
+
+			foreach ($meta_keys as $meta_key) {
+				$meta_values = get_post_custom_values($meta_key, $id);
+				foreach ($meta_values as $meta_value) {
+					$meta_value = maybe_unserialize($meta_value);
+					add_post_meta($newid, $meta_key, $meta_value);
+				}
+			}
+		}
+
+        // From Duplicate Post, https://wordpress.org/plugins/duplicate-post/, by Enrico Battocchi, License GPL v2
+        // Taxinomies
+        global $wpdb;
+        if (isset($wpdb->terms)) {
+            // Clear default category (added by wp_insert_post)
+            wp_set_object_terms( $newid, NULL, 'category' );
+
+            $taxonomies = get_object_taxonomies($p->post_type);
+            foreach ($taxonomies as $taxonomy) {
+                $post_terms = wp_get_object_terms($id, $taxonomy, array( 'orderby' => 'term_order' ));
+                $terms = array();
+                for ($i=0; $i<count($post_terms); $i++) {
+                    $terms[] = $post_terms[$i]->slug;
+                }
+                wp_set_object_terms($newid, $terms, $taxonomy);
+            }
+        }
 
 		return true;
 	}
