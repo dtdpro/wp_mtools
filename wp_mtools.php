@@ -232,6 +232,17 @@ class MTools {
 					if (!is_object($value)) echo $this->posts[$f['name']][$value];
 					else echo $value->post_title;
 				}
+                if ($f['type'] == 'post_object' && $f['multiple']) {
+                    $values = get_field($f['name'], $post_id);
+                    $answers = array();
+                    if (count($values) && $values) {
+                        foreach($values as $value) {
+                            if (!is_object($value)) $answers[] = acf_get_post_title($value);
+                            else $answers[] = $value->post_title;
+                        }
+                    }
+                    echo implode(', ',$answers);
+                }
 			}
 		}
 		
