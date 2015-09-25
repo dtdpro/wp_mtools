@@ -48,6 +48,7 @@ class MTools {
 
 				foreach ( $this->fields as $f ) {
 					if ( $f['type'] == 'post_object' ) {
+						wp_reset_query();
 						$args  = acf_parse_args( $args,
 							array(
 								'posts_per_page'         => - 1,
@@ -64,6 +65,7 @@ class MTools {
 							$this->posts[ $f['name'] ][ $p->ID ] = $p->post_title;
 						}
 						wp_reset_query();
+						$args=null;
 					}
 				}
 
