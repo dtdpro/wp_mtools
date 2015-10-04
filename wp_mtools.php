@@ -105,6 +105,10 @@ class MTools {
 		// Row Actions
 		add_filter('post_row_actions',array(&$this,'mt_row_actions'),10,2);
 		add_filter('page_row_actions',array(&$this,'mt_row_actions'),10,2);
+
+		// User ID
+		add_filter('manage_users_columns', array(&$this,'mt_user_id_column'));
+		add_action('manage_users_custom_column',  array(&$this,'mt_user_id_column_content'), 10, 3);
 	
 		// Styles
 		add_action('admin_head', array($this,'mt_styles'));
@@ -112,7 +116,7 @@ class MTools {
 
 	function mt_styles() {
 	   echo '<style type="text/css">
-			  .widefat .column-post_id {
+			  .widefat .column-post_id, .widefat .column-user_id {
 					width: 5em;
 					vertical-align: top;
 				}
@@ -395,6 +399,18 @@ class MTools {
         }
 
 		return true;
+	}
+
+	function mt_user_id_column($columns) {
+		$columns['user_id'] = 'ID';
+		return $columns;
+	}
+
+	function mt_user_id_column_content($value, $column_name, $user_id) {
+		$user = get_userdata( $user_id );
+		if ( 'user_id' == $column_name )
+			return $user_id;
+		return $value;
 	}
 }
 
