@@ -1,13 +1,13 @@
 <?php
 /**
  * @package WP MTools
- * @version 1.1.0
+ * @version 1.1.1
  */
 /*
 Plugin Name: MTools for Wordpress
 Plugin URI: https://github.com/dtdpro/wp_mtools/
-Description: This is not just a plugin, it makesup for some of WordPress' lack of features.
-Version: 1.1.0
+Description: This is not just a plugin, it makes up for some of WordPress' lack of features.
+Version: 1.1.1
 Author: DtD Productions
 Author URI: http://dtdpro.com/
 License: GPLv2 or later
