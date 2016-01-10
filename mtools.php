@@ -10,6 +10,7 @@ class MTools {
 		add_action( 'admin_init', array($this,'mt_admin_init') );
 		add_action( 'admin_menu', array($this,'mt_admin_menu') );
 		add_action( 'wp_loaded', array( &$this, 'mt_loaded' ));
+		add_action( 'acf/include_field_types', array($this,'mt_acf_gforms_field'));
 
 		$this->posttype = 'post';
 		if (isset($_GET['post_type'])) {
@@ -398,5 +399,10 @@ class MTools {
 		if ( 'user_id' == $column_name )
 			return $user_id;
 		return $value;
+	}
+
+
+	function mt_acf_gforms_field( $version ) {
+		include_once('acf_gforms_field.php');
 	}
 }
