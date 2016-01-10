@@ -261,7 +261,7 @@ class MTools {
 		if ($this->posttype == $type){
 			foreach ($this->fields as $f) {
 				$fn = 'admin_filter_'.$type.'_'.$f['name'];
-				if($f['type'] == 'radio') {
+				if($f['type'] == 'radio' || ($f['type'] == 'select' && !$f['multiple'])) {
 					echo '<select name="'.$fn.'">';
 					echo '<option value="">All '.$f['label'].'</option>';
 					$current_v = isset($_GET[$fn])? $_GET[$fn]:'';
@@ -300,7 +300,7 @@ class MTools {
 		if ($this->posttype == $type){
 			foreach ($this->fields as $f) {
 				$fn = 'admin_filter_'.$type.'_'.$f['name'];
-				if(($f['type'] == 'radio' || ($f['type'] == 'post_object' && !$f['multiple'])) && isset($_GET[$fn]) && $_GET[$fn] != '') {
+				if(($f['type'] == 'radio' || ($f['type'] == 'select' && !$f['multiple']) || ($f['type'] == 'post_object' && !$f['multiple'])) && isset($_GET[$fn]) && $_GET[$fn] != '') {
 					$query->query_vars['meta_key'] = $f['name'];
 					$query->query_vars['meta_value'] = $_GET[$fn];
 				}
