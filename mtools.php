@@ -7,6 +7,7 @@ class MTools {
 	private $posts = array();
 
 	function __construct() {
+
 		add_action( 'admin_init', array($this,'mt_admin_init') );
 		add_action( 'admin_menu', array($this,'mt_admin_menu') );
 		add_action( 'wp_loaded', array( &$this, 'mt_loaded' ));
@@ -18,7 +19,22 @@ class MTools {
 		}
 	}
 
+	function mt_activate() {
+		$opts['show_column_fi']=true;
+		$opts['show_column_pid']=true;
+		$opts['show_column_uid']=true;
+		add_option('wp_mtools', $opts);
+	}
+
+	function mt_deactivate() {
+		delete_option('wp_mtools');
+	}
+
 	function mt_admin_init() {
+		register_setting( 'wp_mtools', 'wp_mtools' );
+
+		$options = get_option( 'wp_mtools' );
+
 		global $pagenow;
 
 		// Post List
@@ -69,20 +85,16 @@ class MTools {
 			// ID Field
 			$pts = get_post_types();
 			foreach ($pts as $pt) {
-				add_filter('manage_'.$pt.'_posts_columns',array($this,'mt_id_head'));
-				add_action('manage_'.$pt.'_posts_custom_column', array($this,'mt_id_content'), 10, 2 );
-				add_filter('manage_edit-'.$pt.'_sortable_columns', array($this,'mt_id_sort') );
+				if ($options['show_column_pid']) {
+					add_filter('manage_'.$pt.'_posts_columns',array($this,'mt_id_head'));
+					add_action('manage_'.$pt.'_posts_custom_column', array($this,'mt_id_content'), 10, 2 );
+					add_filter('manage_edit-'.$pt.'_sortable_columns', array($this,'mt_id_sort') );
+				}
+				if (post_type_supports( $pt,'thumbnail') && $options['show_column_fi']) {
+					add_filter( 'manage_' . $pt . '_posts_columns', array( $this, 'mt_fi_head' ) );
+					add_action( 'manage_' . $pt . '_posts_custom_column', array( $this, 'mt_fi_content' ), 10, 2 );
+				}
 			}
-
-			// ID Field Posts
-			add_filter('manage_post_posts_columns',array($this,'mt_id_head'));
-			add_action('manage_post_posts_custom_column', array($this,'mt_id_content'), 10, 2 );
-			add_filter('manage_edit-post_sortable_columns', array($this,'mt_id_sort') );
-
-			// ID Field Pages
-			add_filter('manage_pages_posts_columns',array($this,'mt_id_head'));
-			add_action('manage_pages_posts_custom_column', array($this,'mt_id_content'), 10, 2 );
-			add_filter('manage_edit-pages_sortable_columns', array($this,'mt_id_sort') );
 		}
 
 		// Post Edit
@@ -95,8 +107,10 @@ class MTools {
 		add_filter('page_row_actions',array(&$this,'mt_row_actions'),10,2);
 
 		// User ID
-		add_filter('manage_users_columns', array(&$this,'mt_user_id_column'));
-		add_action('manage_users_custom_column',  array(&$this,'mt_user_id_column_content'), 10, 3);
+		if ($options['show_column_uid']) {
+			add_filter( 'manage_users_columns', array( &$this, 'mt_user_id_column' ) );
+			add_action( 'manage_users_custom_column', array( &$this, 'mt_user_id_column_content' ), 10, 3 );
+		}
 
 		// Styles
 		add_action('admin_head', array($this,'mt_styles'));
@@ -105,35 +119,284 @@ class MTools {
 	function mt_styles() {
 		echo '<style type="text/css">
 			  .widefat .column-post_id, .widefat .column-user_id {
-					width: 5em;
+					width: 4em;
+					vertical-align: top;
+				}
+			  ..widefat .column-featured_image {
+					width: 10em;
 					vertical-align: top;
 				}
 			 </style>';
 	}
 
 	function mt_admin_menu() {
-		add_menu_page( 'MTools', 'MTools', 'manage_options', 'mtools', array($this,'mt_admin'));
+		add_menu_page( 'MTools', 'MTools', 'manage_options', 'mtools', array($this,'mt_admin_settings'));
+		add_submenu_page( 'mtools', 'MTools Settings', 'Settings', 'manage_options', 'mtools',array($this,'mt_admin_settings') );
+		add_submenu_page( 'mtools', 'MTools Debug', 'Debug', 'manage_options', 'mtools_debug',array($this,'mt_admin_debug') );
 	}
 
-	function mt_admin() {
-		$type = $this->posttype;
+	function mt_admin_settings() {
+		echo '<div class="wrap">';
+		echo '<h1>MTools Settings</h1>';
+		if (isset($_GET['settings-updated']))  { ?>
+			<div id="message" class="updated">
+				<p>MTools settiigs saved.</p>
+			</div>
+		<?php }
 
-		$fg = acf_get_field_groups();
+		add_settings_section('mtSettingsColumns','Column Settings',array($this,'mt_settings_callback'),'wp_mtools');
 
-		foreach ($fg as $g) {
-			echo '<h3>'.$g['title'].'</h3>';
+		add_settings_field('mt_checkbox_show_fi','Show Featured Image',array($this,'mt_checkbox_show_fi'),'wp_mtools','mtSettingsColumns');
+		add_settings_field('mt_checkbox_show_pid','Show Post ID',array($this,'mt_checkbox_show_pid'),'wp_mtools','mtSettingsColumns');
+		add_settings_field('mt_checkbox_show_uid','Show User ID',array($this,'mt_checkbox_show_uid'),'wp_mtools','mtSettingsColumns');
+
+		?>
+		<form action="options.php" method="post">
+
+			<?php
+			settings_fields( 'wp_mtools' );
+			do_settings_sections( 'wp_mtools' );
+			submit_button();
+			?>
+
+		</form>
+		<?php
+		echo '</div>';
+	}
+
+	function mt_admin_debug() {
+		echo '<div class="wrap">';
+		echo '<h1>MTools Debug</h1>';
+
+		if ( is_plugin_active( 'advanced-custom-fields-pro/acf.php' ) ) {
+			echo '<h2>ACF Field Groups</h2>';
+			
+			$fg = acf_get_field_groups();
+
+			foreach ($fg as $g) {
+				echo '<h3>'.$g['title'].'</h3>';
 
 
-			$fields = acf_get_fields($g);
-			foreach ($fields as $f) {
-				echo '<p>';
-				echo '<strong>Field: '.$f['label'].' ('.$f['name']. ') ['.$f['type'].']</strong><br />';
-				echo print_r($f,true);
-				echo '</p>';
+				$fields = acf_get_fields($g);
+				foreach ($fields as $f) {
+					echo '<p>';
+					echo '<strong>Field: '.$f['label'].' ('.$f['name']. ') ['.$f['type'].']</strong><br />';
+					echo print_r($f,true);
+					echo '</p>';
+				}
+
+
 			}
 
-
+			echo '<hr>';
 		}
+
+
+		// Cron Events
+		// From WP Crontrol, https://wordpress.org/plugins/wp-crontrol/, by John Blackbourn & Edward Dale, License GPL v2
+		echo '<h2>WP Cron Events</h2>';
+		$events = $this->get_cron_events();
+		?>
+		<table class="widefat striped">
+			<thead>
+			<tr>
+				<th><?php esc_html_e( 'Hook Name', 'wp-crontrol' ); ?></th>
+				<th><?php esc_html_e( 'Arguments', 'wp-crontrol' ); ?></th>
+				<th><?php esc_html_e( 'Next Run', 'wp-crontrol' ); ?></th>
+				<th><?php esc_html_e( 'Recurrence', 'wp-crontrol' ); ?></th>
+			</tr>
+			</thead>
+			<tbody>
+			<?php
+			if ( is_wp_error( $events ) ) {
+				?>
+				<tr><td colspan="7"><?php echo esc_html( $events->get_error_message() ); ?></td></tr>
+				<?php
+			} else {
+				foreach ( $events as $id => $event ) {
+
+					if ( $doing_edit && $doing_edit == $event->hook && $event->time == $_GET['next_run'] && $event->sig == $_GET['sig'] ) {
+						$doing_edit = array(
+							'hookname' => $event->hook,
+							'next_run' => $event->time,
+							'schedule' => ( $event->schedule ? $event->schedule : '_oneoff' ),
+							'sig'      => $event->sig,
+							'args'     => $event->args,
+						);
+					}
+
+					if ( empty( $event->args ) ) {
+						$args = __( 'None', 'wp-crontrol' );
+					} else {
+						if ( defined( 'JSON_UNESCAPED_SLASHES' ) ) {
+							$args = wp_json_encode( $event->args, JSON_UNESCAPED_SLASHES );
+						} else {
+							$args = stripslashes( wp_json_encode( $event->args ) );
+						}
+					}
+
+					echo '<tr id="cron-' . esc_attr( $id ) . '" class="">';
+
+					if ( 'crontrol_cron_job' == $event->hook ) {
+						echo '<td><em>' . esc_html__( 'PHP Cron', 'wp-crontrol' ) . '</em></td>';
+						echo '<td><em>' . esc_html__( 'PHP Code', 'wp-crontrol' ) . '</em></td>';
+					} else {
+						echo '<td>' . esc_html( $event->hook ) . '</td>';
+						echo '<td>' . esc_html( $args ) . '</td>';
+					}
+
+					echo '<td>';
+					printf( '%s (%s)',
+						esc_html( get_date_from_gmt( date( 'Y-m-d H:i:s', $event->time ), $time_format ) ),
+						esc_html( $this->cron_time_since( time(), $event->time ) )
+					);
+					echo '</td>';
+
+					if ( $event->schedule ) {
+						echo '<td>';
+						echo esc_html( $this->cron_interval( $event->interval ) );
+						echo '</td>';
+					} else {
+						echo '<td>';
+						esc_html_e( 'Non-repeating', 'wp-crontrol' );
+						echo '</td>';
+					}
+
+
+
+					echo '</tr>';
+
+				}
+			}
+			?>
+			</tbody>
+		</table>
+		<?php
+		echo '</div>';
+	}
+
+	public function get_cron_events() {
+		// From WP Crontrol, https://wordpress.org/plugins/wp-crontrol/, by John Blackbourn & Edward Dale, License GPL v2
+
+		$crons  = _get_cron_array();
+		$events = array();
+
+		if ( empty( $crons ) ) {
+			return new WP_Error(
+				'no_events',
+				__( 'You currently have no scheduled cron events.', 'wp-crontrol' )
+			);
+		}
+
+		foreach ( $crons as $time => $cron ) {
+			foreach ( $cron as $hook => $dings ) {
+				foreach ( $dings as $sig => $data ) {
+
+					# This is a prime candidate for a Crontrol_Event class but I'm not bothering currently.
+					$events[ "$hook-$sig-$time" ] = (object) array(
+						'hook'     => $hook,
+						'time'     => $time,
+						'sig'      => $sig,
+						'args'     => $data['args'],
+						'schedule' => $data['schedule'],
+						'interval' => isset( $data['interval'] ) ? $data['interval'] : null,
+					);
+
+				}
+			}
+		}
+
+		return $events;
+
+	}
+
+	public function cron_time_since( $older_date, $newer_date ) {
+		// From WP Crontrol, https://wordpress.org/plugins/wp-crontrol/, by John Blackbourn & Edward Dale, License GPL v2
+		return $this->cron_interval( $newer_date - $older_date );
+	}
+
+	public function cron_interval( $since ) {
+		// From WP Crontrol, https://wordpress.org/plugins/wp-crontrol/, by John Blackbourn & Edward Dale, License GPL v2
+		// array of time period chunks
+		$chunks = array(
+			array( 60 * 60 * 24 * 365, _n_noop( '%s year', '%s years', 'wp-crontrol' ) ),
+			array( 60 * 60 * 24 * 30, _n_noop( '%s month', '%s months', 'wp-crontrol' ) ),
+			array( 60 * 60 * 24 * 7, _n_noop( '%s week', '%s weeks', 'wp-crontrol' ) ),
+			array( 60 * 60 * 24, _n_noop( '%s day', '%s days', 'wp-crontrol' ) ),
+			array( 60 * 60, _n_noop( '%s hour', '%s hours', 'wp-crontrol' ) ),
+			array( 60, _n_noop( '%s minute', '%s minutes', 'wp-crontrol' ) ),
+			array( 1, _n_noop( '%s second', '%s seconds', 'wp-crontrol' ) ),
+		);
+
+		if ( $since <= 0 ) {
+			return __( 'now', 'wp-crontrol' );
+		}
+
+		// we only want to output two chunks of time here, eg:
+		// x years, xx months
+		// x days, xx hours
+		// so there's only two bits of calculation below:
+
+		// step one: the first chunk
+		for ( $i = 0, $j = count( $chunks ); $i < $j; $i++ ) {
+			$seconds = $chunks[ $i ][0];
+			$name = $chunks[ $i ][1];
+
+			// finding the biggest chunk (if the chunk fits, break)
+			if ( ( $count = floor( $since / $seconds ) ) != 0 ) {
+				break;
+			}
+		}
+
+		// set output var
+		$output = sprintf( translate_nooped_plural( $name, $count, 'wp-crontrol' ), $count );
+
+		// step two: the second chunk
+		if ( $i + 1 < $j ) {
+			$seconds2 = $chunks[ $i + 1 ][0];
+			$name2 = $chunks[ $i + 1 ][1];
+
+			if ( ( $count2 = floor( ( $since - ( $seconds * $count ) ) / $seconds2 ) ) != 0 ) {
+				// add to output var
+				$output .= ' ' . sprintf( translate_nooped_plural( $name2, $count2, 'wp-crontrol' ), $count2 );
+			}
+		}
+
+		return $output;
+	}
+
+	function mt_checkbox_show_fi(  ) {
+
+		$options = get_option( 'wp_mtools' );
+		?>
+		<input type='checkbox' name='wp_mtools[show_column_fi]' <?php checked( $options['show_column_fi'], 1 ); ?> value='1'>
+		<?php
+
+	}
+
+	function mt_checkbox_show_pid(  ) {
+
+		$options = get_option( 'wp_mtools' );
+		?>
+		<input type='checkbox' name='wp_mtools[show_column_pid]' <?php checked( $options['show_column_pid'], 1 ); ?> value='1'>
+		<?php
+
+	}
+
+	function mt_checkbox_show_uid(  ) {
+
+		$options = get_option( 'wp_mtools' );
+		?>
+		<input type='checkbox' name='wp_mtools[show_column_uid]' <?php checked( $options['show_column_uid'], 1 ); ?> value='1'>
+		<?php
+
+	}
+
+
+	function mt_settings_callback(  ) {
+
+		echo __( 'Admin list column settings', 'wordpress' );
+
 	}
 
 	function mt_loaded() {
@@ -189,6 +452,15 @@ class MTools {
 	function mt_id_sort($columns) {
 		$columns['post_id'] = 'post_id';
 		return $columns;
+	}
+
+	function mt_fi_head( $columns ) {
+		$columns['featured_image']  = 'Featured Image';
+		return $columns;
+	}
+
+	function mt_fi_content( $column_name, $post_id ) {
+		if( $column_name == 'featured_image' ) { echo the_post_thumbnail( 'thumbnail' ); }
 	}
 
 	function mt_table_head( $columns ) {
