@@ -12,6 +12,7 @@ class MTools {
 		add_action( 'admin_menu', array($this,'mt_admin_menu') );
 		add_action( 'wp_loaded', array( &$this, 'mt_loaded' ));
 		add_action( 'acf/include_field_types', array($this,'mt_acf_gforms_field'));
+		add_filter( 'plugin_action_links', array($this, 'mt_plugin_actions'), 10, 2);
 
 		$this->posttype = 'post';
 		if (isset($_GET['post_type'])) {
@@ -129,7 +130,24 @@ class MTools {
 			 </style>';
 	}
 
+	function mt_plugin_actions($action_links,$plugin_file){
+		if($plugin_file=='wp_mtools/wp_mtools.php'){
+			$wp_debug_link = '<a href="admin.php?page=mtools_debug">Debug</a>';
+			array_unshift($action_links,$wp_debug_link);
+			$wp_settings_link = '<a href="options-general.php?page=mtools">' . __("Settings") . '</a>';
+			array_unshift($action_links,$wp_settings_link);
+		}
+		return $action_links;
+	}
+
 	function mt_admin_menu() {
+		add_options_page(
+			'MTools Settings',
+			'MTools',
+			'manage_options',
+			'mtools',
+			array( $this, 'mt_admin_debug' )
+		);
 		add_menu_page( 'MTools', 'MTools', 'manage_options', 'mtools', array($this,'mt_admin_settings'));
 		add_submenu_page( 'mtools', 'MTools Settings', 'Settings', 'manage_options', 'mtools',array($this,'mt_admin_settings') );
 		add_submenu_page( 'mtools', 'MTools Debug', 'Debug', 'manage_options', 'mtools_debug',array($this,'mt_admin_debug') );
@@ -170,7 +188,7 @@ class MTools {
 
 		if ( is_plugin_active( 'advanced-custom-fields-pro/acf.php' ) ) {
 			echo '<h2>ACF Field Groups</h2>';
-			
+
 			$fg = acf_get_field_groups();
 
 			foreach ($fg as $g) {
