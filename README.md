@@ -9,9 +9,18 @@ This is not just a plugin, it makes up for some of WordPress' lack of features.
 * Featured Image in Admin Post List
 * User ID in Admin User List
 * Gravity Forms field object in ACF
+* View PHP Info
+* View Post Type settings
+* View WP Cron events
 
 Changelog
 =========
+
+**1.4.0**
+
+* PHP Info page
+* Post Types page
+* WP Cron event list on it's own page
 
 **1.3.1**
 
