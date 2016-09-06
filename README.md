@@ -12,6 +12,7 @@ This is not just a plugin, it makes up for some of WordPress' lack of features.
 * View PHP Info
 * View Post Type settings
 * View WP Cron events
+* View system info
 
 Changelog
 =========
@@ -21,6 +22,7 @@ Changelog
 * PHP Info page
 * Post Types page
 * WP Cron event list on it's own page
+* System Info page
 
 **1.3.1**
 
