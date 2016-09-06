@@ -132,7 +132,7 @@ class MTools {
 
 	function mt_plugin_actions($action_links,$plugin_file){
 		if($plugin_file=='wp_mtools/wp_mtools.php'){
-			$wp_debug_link = '<a href="admin.php?page=mtools_debug">Debug</a>';
+			$wp_debug_link = '<a href="admin.php?page=mtools_info">Info</a>';
 			array_unshift($action_links,$wp_debug_link);
 			$wp_settings_link = '<a href="options-general.php?page=mtools">' . __("Settings") . '</a>';
 			array_unshift($action_links,$wp_settings_link);
@@ -141,16 +141,17 @@ class MTools {
 	}
 
 	function mt_admin_menu() {
-		add_options_page(
-			'MTools Settings',
-			'MTools',
-			'manage_options',
-			'mtools',
-			array( $this, 'mt_admin_debug' )
-		);
-		add_menu_page( 'MTools', 'MTools', 'manage_options', 'mtools', array($this,'mt_admin_settings'));
-		add_submenu_page( 'mtools', 'MTools Settings', 'Settings', 'manage_options', 'mtools',array($this,'mt_admin_settings') );
-		add_submenu_page( 'mtools', 'MTools Debug', 'Debug', 'manage_options', 'mtools_debug',array($this,'mt_admin_debug') );
+		add_menu_page( 'MTools', 'MTools', 'manage_options', 'mtools', array($this,'mt_admin_welcome'));
+		add_submenu_page( 'mtools', 'MTools System Info', 'System Info', 'manage_options', 'mtools_info',array($this,'mt_admin_info') );
+		add_submenu_page( 'mtools', 'MTools PHPInfo', 'PHPInfo', 'manage_options', 'mtools_phpinfo',array($this,'mt_admin_phpinfo') );
+		add_submenu_page( 'mtools', 'MTools Cron', 'Cron', 'manage_options', 'mtools_cron',array($this,'mt_admin_cron') );
+		add_submenu_page( 'mtools', 'MTools Post Types', 'Post Types', 'manage_options', 'mtools_posttypes',array($this,'mt_admin_posttypes') );
+		if ( is_plugin_active( 'advanced-custom-fields-pro/acf.php' ) ) {
+			add_submenu_page( 'mtools', 'MTools ACF', 'ACF', 'manage_options', 'mtools_acf',array($this,'mt_admin_acf') );
+		}
+		add_submenu_page( 'mtools', 'MTools Settings', 'Settings', 'manage_options', 'mtools_settings',array($this,'mt_admin_settings') );
+
+		add_options_page('MTools Settings','MTools','manage_options','mtoolso_ptions',	array( $this, 'mt_admin_settings' ));
 	}
 
 	function mt_admin_settings() {
@@ -182,12 +183,79 @@ class MTools {
 		echo '</div>';
 	}
 
-	function mt_admin_debug() {
+	function mt_admin_welcome() {
 		echo '<div class="wrap">';
-		echo '<h1>MTools Debug</h1>';
+		echo '<h1>MTools for WordPress</h1>';
+		echo '<p>Use side menu to chhose what you want to see<./p>';
+		echo '</div>';
+	}
 
+	function mt_admin_info() {
+		echo '<div class="wrap">';
+		echo '<h1>System Info</h1>';
+		global $wpdb;
+		$this->info = array(
+			'php'                   => php_uname(),
+			'phpversion'            => phpversion(),
+			'server'                => isset($_SERVER['SERVER_SOFTWARE']) ? $_SERVER['SERVER_SOFTWARE'] : getenv('SERVER_SOFTWARE'),
+			'sapi_name'             => php_sapi_name(),
+			'db_version'            => $wpdb->db_version(),
+			'version'               => get_bloginfo('version'),
+			'useragent'             => isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : "",
+		);
+		?>
+		<table class="widefat striped">
+			<thead>
+				<tr><th width="25%">Setting</th><th>Value</th></tr>
+			</thead>
+			<tfoot>
+				<tr><td colspan="2">&#160;</td></tr>
+			</tfoot>
+			<tbody>
+				<tr><td><strong>PHP Built On</strong></td><td><?php echo $this->info['php']; ?></td></tr>
+				<tr><td><strong>PHP Version</strong></td><td><?php echo $this->info['phpversion']; ?></td></tr>
+				<tr><td><strong>Web Server</strong></td><td><?php echo $this->info['server']; ?></td></tr>
+				<tr><td><strong>Web Server to PHP Interface</strong></td><td><?php echo $this->info['sapi_name']; ?></td></tr>
+				<tr><td><strong>Database Version</strong></td><td><?php echo $this->info['db_version']; ?></td></tr>
+				<tr><td><strong>WordPress Version</strong></td><td><?php echo $this->info['version']; ?></td></tr>
+				<tr><td><strong>User Agent</strong></td><td><?php echo htmlspecialchars($this->info['useragent'], ENT_COMPAT, 'UTF-8'); ?></td></tr>
+			</tbody>
+		</table>
+		<?php
+
+
+		echo '</div>';
+	}
+
+	function mt_admin_phpinfo() {
+		// From WordPress phpinfo(): https://wordpress.org/plugins/wordpress-php-info/
+		echo '<div class="wrap">';
+		ob_start();
+		phpinfo(-1);
+		$phpinfo_content = ob_get_contents();
+		ob_end_clean();
+
+		if ( ! empty( $phpinfo_content ) )
+			$phpinfo_array = explode( '<table', $phpinfo_content );
+
+		if ( ! empty( $phpinfo_array ) ) {
+			unset( $phpinfo_array[0] );
+			foreach ( $phpinfo_array as $phpinfo_element ) {
+
+				$phpinfo_element = str_replace( '<tr', '<tr valign="top"', $phpinfo_element );
+
+				echo '<table class="widefat striped" ' . $phpinfo_element;
+				echo '<div style="clear:both"></div>';
+			}
+
+		}
+		echo '</div>';
+	}
+
+	function mt_admin_acf() {
+		echo '<div class="wrap">';
+		echo '<h1>ACF Field Groups</h1>';
 		if ( is_plugin_active( 'advanced-custom-fields-pro/acf.php' ) ) {
-			echo '<h2>ACF Field Groups</h2>';
 
 			$fg = acf_get_field_groups();
 
@@ -207,12 +275,54 @@ class MTools {
 			}
 
 			echo '<hr>';
+		} else {
+			echo '<h2>ACF Is Not Installed</h2>';
 		}
+		echo '</div>';
 
+	}
 
-		// Cron Events
+	function mt_admin_posttypes() {
+		echo '<div class="wrap">';
+		echo '<h1>Post Types</h1>';
+
+		$args = array(
+			'public'   => true,
+			'_builtin' => true
+		);
+
+		$output = 'objects'; // names or objects, note names is the default
+		$operator = 'or'; // 'and' or 'or'
+
+		$post_types = get_post_types( $args, $output, $operator );
+
+		foreach ( $post_types  as $post_type ) {
+			echo '<h3>' . $post_type->name . '</h3>';
+			echo '<table class="widefat striped">';
+			foreach ($post_type as $pk => $pv) {
+				if (is_object($pv) || is_array($pv)) {
+					echo '<tr><td>'.$pk.'</td><td>';
+					echo '<table class="widefat striped">';
+					foreach ($pv as $ok => $ov) {
+						echo '<tr><td>'.$ok.'</td><td>'.$ov.'</td></tr>';
+					}
+					echo '</table>';
+					echo '</td></tr>';
+				} else {
+					echo '<tr><td>'.$pk.'</td><td>'.$pv.'</td></tr>';
+				}
+			}
+			echo '</table>';
+		}
+		echo '</div>';
+
+	}
+
+	function mt_admin_cron() {
+		echo '<div class="wrap">';
+
 		// From WP Crontrol, https://wordpress.org/plugins/wp-crontrol/, by John Blackbourn & Edward Dale, License GPL v2
-		echo '<h2>WP Cron Events</h2>';
+		echo '<h1>WP Cron Events</h1>';
 		$events = $this->get_cron_events();
 		?>
 		<table class="widefat striped">

@@ -199,7 +199,6 @@ class MTPluginUpdater {
 				}
 			}
 		}
-
 		return $response;
 	}
 
