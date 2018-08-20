@@ -13,9 +13,14 @@ This is not just a plugin, it makes up for some of WordPress' lack of features.
 * View Post Type settings
 * View WP Cron events
 * View system info
+* Require login/role to view a post
 
 Changelog
 =========
+
+**1.5.0**
+
+* Require login/role setting for any post type
 
 **1.4.0**
 

@@ -7,7 +7,7 @@
 Plugin Name: MTools for Wordpress
 Plugin URI: https://github.com/dtdpro/wp_mtools/
 Description: This is not just a plugin, it makes up for some of WordPress' lack of features.
-Version: 1.4.0
+Version: 1.5.0
 Author: DtD Productions
 Author URI: http://dtdpro.com/
 License: GPLv2 or later
@@ -34,9 +34,9 @@ function mtools() {
 	return $mtools;
 }
 
+mtools();
 
 // initialize
 if (is_admin()) {
-	mtools();
 	new MTPluginUpdater( __FILE__, 'dtdpro', "wp_mtools" );
 }

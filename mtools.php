@@ -7,23 +7,28 @@ class MTools {
 	private $posts = array();
 
 	function __construct() {
+		if (is_admin()) {
+			add_action( 'admin_init', array( $this, 'mt_admin_init' ) );
+			add_action( 'admin_menu', array( $this, 'mt_admin_menu' ) );
+			add_action( 'wp_loaded', array( &$this, 'mt_loaded' ) );
+			add_action( 'acf/include_field_types', array( $this, 'mt_acf_gforms_field' ) );
+			add_filter( 'plugin_action_links', array( $this, 'mt_plugin_actions' ), 10, 2 );
 
-		add_action( 'admin_init', array($this,'mt_admin_init') );
-		add_action( 'admin_menu', array($this,'mt_admin_menu') );
-		add_action( 'wp_loaded', array( &$this, 'mt_loaded' ));
-		add_action( 'acf/include_field_types', array($this,'mt_acf_gforms_field'));
-		add_filter( 'plugin_action_links', array($this, 'mt_plugin_actions'), 10, 2);
-
-		$this->posttype = 'post';
-		if (isset($_GET['post_type'])) {
-			$this->posttype = $_GET['post_type'];
-		}
+			$this->posttype = 'post';
+			if ( isset( $_GET['post_type'] ) ) {
+				$this->posttype = $_GET['post_type'];
+			}
+		} else {
+			add_action( 'template_redirect', array( &$this, 'mt_template_redirect' ) );
+			add_action( 'pre_get_posts', array( &$this, 'mt_show_allowed_posts') );
+        }
 	}
 
 	function mt_activate() {
 		$opts['show_column_fi']=true;
 		$opts['show_column_pid']=true;
 		$opts['show_column_uid']=true;
+		$opts['show_restricted']=false;
 		add_option('wp_mtools', $opts);
 	}
 
@@ -83,7 +88,7 @@ class MTools {
 				}
 			}
 
-			// ID Field
+			// ID & Featured Image in post list
 			$pts = get_post_types();
 			foreach ($pts as $pt) {
 				if ($options['show_column_pid']) {
@@ -98,9 +103,10 @@ class MTools {
 			}
 		}
 
-		// Post Edit
+		// Post Meta Box
 		if (is_admin() && $pagenow=='post.php') {
 			add_action('add_meta_boxes', array($this,'mt_meta_boxes'));
+			add_action( 'save_post', array( &$this, 'mt_save_post' ), 10, 2 );
 		}
 
 		// Row Actions
@@ -159,11 +165,15 @@ class MTools {
 		echo '<h1>MTools Settings</h1>';
 		if (isset($_GET['settings-updated']))  { ?>
 			<div id="message" class="updated">
-				<p>MTools settiigs saved.</p>
+				<p>MTools settings saved.</p>
 			</div>
 		<?php }
 
-		add_settings_section('mtSettingsColumns','Column Settings',array($this,'mt_settings_callback'),'wp_mtools');
+		add_settings_section('mtSettingsRestriction','Content Restriction',array($this,'mt_restriction_settings_callback'),'wp_mtools');
+
+		add_settings_field('mt_checkbox_show_restricted','Show Restricted Content in Lists',array($this,'mt_checkbox_show_restricted'),'wp_mtools','mtSettingsRestriction');
+
+		add_settings_section('mtSettingsColumns','Post List Columns',array($this,'mt_column_settings_callback'),'wp_mtools');
 
 		add_settings_field('mt_checkbox_show_fi','Show Featured Image',array($this,'mt_checkbox_show_fi'),'wp_mtools','mtSettingsColumns');
 		add_settings_field('mt_checkbox_show_pid','Show Post ID',array($this,'mt_checkbox_show_pid'),'wp_mtools','mtSettingsColumns');
@@ -520,10 +530,24 @@ class MTools {
 
 	}
 
+	function mt_checkbox_show_restricted(  ) {
 
-	function mt_settings_callback(  ) {
+		$options = get_option( 'wp_mtools' );
+		?>
+        <input type='checkbox' name='wp_mtools[show_restricted]' <?php checked( $options['show_restricted'], 1 ); ?> value='1'>
+		<?php
 
-		echo __( 'Admin list column settings', 'wordpress' );
+	}
+
+	function mt_restriction_settings_callback(  ) {
+
+		echo __( 'Content restriction settings allow for the showing of posts in lists that require login to be accessed.', 'wordpress' );
+
+	}
+
+	function mt_column_settings_callback(  ) {
+
+		echo __( 'Additional admin post list columns including ID, Featured Image and ACF fields', 'wordpress' );
 
 	}
 
@@ -593,7 +617,7 @@ class MTools {
 
 	function mt_table_head( $columns ) {
 		foreach ($this->fields as $f) {
-			if ($f['type'] == 'text' || $f['type'] == 'url' || $f['type'] == 'radio' || $f['type'] == 'post_object' || $f['type'] == 'select' ) {
+			if ($f['type'] == 'text' || $f['type'] == 'url' || $f['type'] == 'radio' || $f['type'] == 'post_object' || $f['type'] == 'select' || $f['type'] == 'range' ) {
 				$columns[$f['name']] = $f['label'];
 			}
 		}
@@ -603,7 +627,7 @@ class MTools {
 	function mt_table_content( $column_name, $post_id ) {
 		foreach ($this->fields as $f) {
 			if( $column_name == $f['name']) {
-				if ($f['type'] == 'text' || $f['type'] == 'url') {
+				if ($f['type'] == 'text' || $f['type'] == 'url' || $f['type'] == 'range') {
 					$value = get_field($f['name'], $post_id);
 					echo $value;
 				}
@@ -645,7 +669,7 @@ class MTools {
 
 	function mt_table_sort( $columns ) {
 		foreach ($this->fields as $f) {
-			if ($f['type'] == 'text' || $f['type'] == 'url' || $f['type'] == 'radio' || ($f['type'] == 'select' && !$f['multiple']) ) {
+			if ($f['type'] == 'text' || $f['type'] == 'url' || $f['type'] == 'radio' || $f['type'] == 'range' || ($f['type'] == 'select' && !$f['multiple']) ) {
 				$columns[$f['name']] = $f['name'];
 			}
 		}
@@ -709,18 +733,102 @@ class MTools {
 		}
 	}
 
-	function cf_post_id() {
+	function mt_meta_box() {
 		global $post;
 
-		// Get the data
-		$id = $post->ID;
+		//Nonce field
+		wp_nonce_field( 'mt_save_meta_box_data', 'mt_meta_box_nonce' );
 
-		// Echo out the field
+		// ID Field
+		$id = $post->ID;
 		echo '<strong>ID:</strong> '.$id;
+
+        // Require Login Option
+		$value = get_post_meta( $post->ID, 'mt-require-login', true );
+		if ( ! $value ) $value = 'No';
+		echo '<p><strong>Require Login</strong></p>';
+		echo '<select id="mt-require-login" name="mt-require-login">';
+		foreach ( array( 'Yes', 'No' ) as $val ) {
+			echo '<option';
+			if ( $val == $value ) echo ' selected="selected"';
+			echo '>' . $val . '</option>';
+		}
+		echo '</select>';
+
+		// Require Login Role
+		global $wp_roles;
+		$value = get_post_meta( $post->ID, 'mt-require-login-role', true );
+		echo '<p><strong>Require Login Role</strong></p>';
+		echo '<select id="mt-require-login-role" name="mt-require-login-role">';
+		echo '<option value="any"';
+		if ( 'any' === $value ) echo ' selected="selected"';
+		echo '>Any</option>';
+		foreach ( $wp_roles->roles as $key => $role ) {
+			echo '<option value="' . $key . '"';
+			if ( $key === $value ) echo ' selected="selected"';
+			echo '>' . $role['name'] . '</option>';
+		}
+		echo '</select>';
+
+
 	}
 
 	function mt_meta_boxes() {
-		add_meta_box('mtools_id', 'Info', array($this,'cf_post_id'), null, 'side', 'high');
+		add_meta_box('mtools_id', 'MTools', array($this,'mt_meta_box'), null, 'side', 'high');
+	}
+
+	function mt_save_post($post_id, $post) {
+		$nonce = $_POST['mt_meta_box_nonce'];
+		if ( ! isset( $nonce ) || ! wp_verify_nonce( $nonce, 'mt_save_meta_box_data' ) ) return;
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) return;
+
+		$require_login = sanitize_text_field( $_POST['mt-require-login'] );
+		$role = sanitize_text_field( $_POST['mt-require-login-role'] );
+
+		update_post_meta( $post_id, 'mt-require-login', $require_login );
+		update_post_meta( $post_id, 'mt-require-login-role', $role );
+    }
+
+	function mt_template_redirect() {
+		global $post;
+
+		$require_login = get_post_meta( $post->ID, 'mt-require-login', true );
+		$role = get_post_meta( $post->ID, 'mt-require-login-role', true );
+		$user = wp_get_current_user();
+
+		if ( $require_login === 'Yes' ) {
+		    if (is_user_logged_in()) {
+		        if ($role != 'any' && !$user->has_cap('administrator')) {
+			        if (!$user->has_cap($role)) {
+				        global $wp_query;
+				        $wp_query->set_404();
+				        status_header( 404 );
+				        get_template_part( 404 ); exit();
+                    }
+		        }
+            } else {
+			    auth_redirect();
+            }
+		}
+	}
+
+	function mt_show_allowed_posts ( $query ) {
+		$options = get_option( 'wp_mtools' );
+		if (!is_user_logged_in() && !$options['show_restricted']) {
+			$meta_query = array(
+			        'relation'=>'OR',
+                    array(
+                        'key'=>'mt-require-login',
+                        'value'=>'yes',
+                        'compare'=>'!=',
+                    ),
+                    array(
+                        'key'=>'mt-require-login',
+                        'compare'=>'NOT EXISTS',
+                    ),
+			);
+			$query->set('meta_query',$meta_query);
+		}
 	}
 
 	function mt_clone_single_post( $id ) {
