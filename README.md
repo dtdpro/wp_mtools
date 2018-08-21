@@ -18,6 +18,11 @@ This is not just a plugin, it makes up for some of WordPress' lack of features.
 Changelog
 =========
 
+**1.5.1**
+
+* Show login/role setting for any post type on add page
+* Bug fix: Category page should not require login when article in list requires login
+
 **1.5.0**
 
 * Require login/role setting for any post type

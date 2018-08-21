@@ -104,7 +104,7 @@ class MTools {
 		}
 
 		// Post Meta Box
-		if (is_admin() && $pagenow=='post.php') {
+		if (is_admin() && ($pagenow=='post.php' || $pagenow=='post-new.php')) {
 			add_action('add_meta_boxes', array($this,'mt_meta_boxes'));
 			add_action( 'save_post', array( &$this, 'mt_save_post' ), 10, 2 );
 		}
@@ -735,17 +735,20 @@ class MTools {
 
 	function mt_meta_box() {
 		global $post;
+		global $pagenow;
 
 		//Nonce field
 		wp_nonce_field( 'mt_save_meta_box_data', 'mt_meta_box_nonce' );
 
 		// ID Field
-		$id = $post->ID;
-		echo '<strong>ID:</strong> '.$id;
+		if ($pagenow=='post.php') {
+			$id = $post->ID;
+			echo '<strong>ID:</strong> ' . $id;
+		}
 
         // Require Login Option
-		$value = get_post_meta( $post->ID, 'mt-require-login', true );
-		if ( ! $value ) $value = 'No';
+		if ($pagenow=='post.php') $value = get_post_meta( $post->ID, 'mt-require-login', true );
+		else $value = 'No';
 		echo '<p><strong>Require Login</strong></p>';
 		echo '<select id="mt-require-login" name="mt-require-login">';
 		foreach ( array( 'Yes', 'No' ) as $val ) {
@@ -757,7 +760,8 @@ class MTools {
 
 		// Require Login Role
 		global $wp_roles;
-		$value = get_post_meta( $post->ID, 'mt-require-login-role', true );
+		if ($pagenow=='post.php') $value = get_post_meta( $post->ID, 'mt-require-login-role', true );
+		else $value = 'any';
 		echo '<p><strong>Require Login Role</strong></p>';
 		echo '<select id="mt-require-login-role" name="mt-require-login-role">';
 		echo '<option value="any"';
@@ -792,23 +796,26 @@ class MTools {
 	function mt_template_redirect() {
 		global $post;
 
-		$require_login = get_post_meta( $post->ID, 'mt-require-login', true );
-		$role = get_post_meta( $post->ID, 'mt-require-login-role', true );
-		$user = wp_get_current_user();
+		if (is_single()) {
+			$require_login = get_post_meta( $post->ID, 'mt-require-login', true );
+			$role          = get_post_meta( $post->ID, 'mt-require-login-role', true );
+			$user          = wp_get_current_user();
 
-		if ( $require_login === 'Yes' ) {
-		    if (is_user_logged_in()) {
-		        if ($role != 'any' && !$user->has_cap('administrator')) {
-			        if (!$user->has_cap($role)) {
-				        global $wp_query;
-				        $wp_query->set_404();
-				        status_header( 404 );
-				        get_template_part( 404 ); exit();
-                    }
-		        }
-            } else {
-			    auth_redirect();
-            }
+			if ( $require_login === 'Yes' ) {
+				if ( is_user_logged_in() ) {
+					if ( $role != 'any' && ! $user->has_cap( 'administrator' ) ) {
+						if ( ! $user->has_cap( $role ) ) {
+							global $wp_query;
+							$wp_query->set_404();
+							status_header( 404 );
+							get_template_part( 404 );
+							exit();
+						}
+					}
+				} else {
+					auth_redirect();
+				}
+			}
 		}
 	}
 
