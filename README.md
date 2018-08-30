@@ -18,6 +18,10 @@ This is not just a plugin, it makes up for some of WordPress' lack of features.
 Changelog
 =========
 
+**1.5.2**
+
+* Bug fix: When editing an article when require login was not set, require login defaulted to yes
+
 **1.5.1**
 
 * Show login/role setting for any post type on add page

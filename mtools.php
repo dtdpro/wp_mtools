@@ -747,7 +747,10 @@ class MTools {
 		}
 
         // Require Login Option
-		if ($pagenow=='post.php') $value = get_post_meta( $post->ID, 'mt-require-login', true );
+		if ($pagenow=='post.php') {
+		    $value = get_post_meta( $post->ID, 'mt-require-login', true );
+		    if (!$value) $value = 'No';
+		}
 		else $value = 'No';
 		echo '<p><strong>Require Login</strong></p>';
 		echo '<select id="mt-require-login" name="mt-require-login">';
@@ -760,7 +763,10 @@ class MTools {
 
 		// Require Login Role
 		global $wp_roles;
-		if ($pagenow=='post.php') $value = get_post_meta( $post->ID, 'mt-require-login-role', true );
+		if ($pagenow=='post.php') {
+		    $value = get_post_meta( $post->ID, 'mt-require-login-role', true );
+			if (!$value) $value = 'any';
+		}
 		else $value = 'any';
 		echo '<p><strong>Require Login Role</strong></p>';
 		echo '<select id="mt-require-login-role" name="mt-require-login-role">';
