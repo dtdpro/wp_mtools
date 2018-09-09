@@ -18,6 +18,12 @@ This is not just a plugin, it makes up for some of WordPress' lack of features.
 Changelog
 =========
 
+**1.6.0**
+
+* Do not show MTools post options on ACF Field Groups Posts
+* Show ACF repeater fields in post list, this will use a table if there is more than one filed in repeater, line breaks if not
+* Multi option ACF fields in list view now use line breaks instead of columns
+
 **1.5.2**
 
 * Bug fix: When editing an article when require login was not set, require login defaulted to yes

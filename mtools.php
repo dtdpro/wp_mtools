@@ -196,7 +196,14 @@ class MTools {
 	function mt_admin_welcome() {
 		echo '<div class="wrap">';
 		echo '<h1>MTools for WordPress</h1>';
-		echo '<p>Use side menu to chhose what you want to see<./p>';
+		echo '<p>Use side menu to choose what you want to see</p>';
+		echo '<p>Plugin &copy;2016-2018 DtD Productions. Licensed under GPL v2</p>';
+		echo '<p>Portions of this plugin are based on other plugins as noted below:<br><br>';
+		echo '<a href="http://wordpress.org/extend/plugins/clone-posts/">Clone Posts</a>, by Lukasz Kostrzewa, License GPL v2<br>';
+		echo '<a href="https://wordpress.org/plugins/duplicate-post/">Duplicate Post</a>, by Enrico Battocchi, License GPL v2<br>';
+		echo '<a href="https://wordpress.org/plugins/wp-crontrol/">WP Crontrol</a>, by John Blackbourn & Edward Dale, License GPL v2<br>';
+		echo '<a href="https://wordpress.org/plugins/wordpress-php-info/">WordPress phpinfo()</a>, by Chris Flannagan, License GPL v2';
+		echo '</p>';
 		echo '</div>';
 	}
 
@@ -238,7 +245,7 @@ class MTools {
 	}
 
 	function mt_admin_phpinfo() {
-		// From WordPress phpinfo(): https://wordpress.org/plugins/wordpress-php-info/
+		// From WordPress phpinfo(): https://wordpress.org/plugins/wordpress-php-info/, by Chris Flannagan, License GPL v2
 		echo '<div class="wrap">';
 		ob_start();
 		phpinfo(-1);
@@ -617,7 +624,7 @@ class MTools {
 
 	function mt_table_head( $columns ) {
 		foreach ($this->fields as $f) {
-			if ($f['type'] == 'text' || $f['type'] == 'url' || $f['type'] == 'radio' || $f['type'] == 'post_object' || $f['type'] == 'select' || $f['type'] == 'range' ) {
+			if (in_array($f['type'], array('text','url','radio','post_object','select','range','repeater')) ) {
 				$columns[$f['name']] = $f['label'];
 			}
 		}
@@ -627,45 +634,121 @@ class MTools {
 	function mt_table_content( $column_name, $post_id ) {
 		foreach ($this->fields as $f) {
 			if( $column_name == $f['name']) {
-				if ($f['type'] == 'text' || $f['type'] == 'url' || $f['type'] == 'range') {
-					$value = get_field($f['name'], $post_id);
-					echo $value;
-				}
-				if( $f['type'] == 'radio' || ($f['type'] == 'select' && !$f['multiple'])) {
-					$value = get_field($f['name'], $post_id);
-					echo $f['choices'][$value];
-				}
-				if( $f['type'] == 'select' && $f['multiple'] ) {
-					$values = get_field($f['name'], $post_id);
-					$answers = array();
-					if (count($values) && $values) {
-						foreach($values as $a) {
-							$answers[] = $f['choices'][$a];
-						}
-						echo implode(', ',$answers);
-					}
-				}
-				if ($f['type'] == 'post_object' && !$f['multiple']) {
-					$value = get_field($f['name'], $post_id);
-					if (!is_object($value)) echo $this->posts[$f['name']][$value];
-					else echo $value->post_title;
-				}
-				if ($f['type'] == 'post_object' && $f['multiple']) {
-					$values = get_field($f['name'], $post_id);
-					$answers = array();
-					if (count($values) && $values) {
-						foreach($values as $value) {
-							if (!is_object($value)) $answers[] = acf_get_post_title($value);
-							else $answers[] = $value->post_title;
-						}
-					}
-					echo implode(', ',$answers);
-				}
+				$this->mt_table_content_field($f, $post_id);
 			}
 		}
 
 
 	}
+
+	function mt_table_content_field($f, $post_id) {
+		if ($f['type'] == 'text' || $f['type'] == 'url' || $f['type'] == 'range') {
+			$value = get_field($f['name'], $post_id);
+			echo $value;
+		}
+		if( $f['type'] == 'radio' || ($f['type'] == 'select' && !$f['multiple'])) {
+			$value = get_field($f['name'], $post_id);
+			echo $f['choices'][$value];
+		}
+		if( $f['type'] == 'select' && $f['multiple'] ) {
+			$values = get_field($f['name'], $post_id);
+			$answers = array();
+			if (count($values) && $values) {
+				foreach($values as $a) {
+					$answers[] = $f['choices'][$a];
+				}
+				echo implode('<br />',$answers);
+			}
+		}
+		if ($f['type'] == 'post_object' && !$f['multiple']) {
+			$value = get_field($f['name'], $post_id);
+			if (!is_object($value)) echo $this->posts[$f['name']][$value];
+			else echo $value->post_title;
+		}
+		if ($f['type'] == 'post_object' && $f['multiple']) {
+			$values = get_field($f['name'], $post_id);
+			$answers = array();
+			if (count($values) && $values) {
+				foreach($values as $value) {
+					if (!is_object($value)) $answers[] = acf_get_post_title($value);
+					else $answers[] = $value->post_title;
+				}
+			}
+			echo implode('<br />',$answers);
+		}
+		if ($f['type'] == 'repeater') {
+			$value = get_field($f['name'], $post_id);
+			//echo '<pre>';print_r($value);echo '</pre>';
+			$sub_fields = get_field_object( $f['name'], $post_id, fasle, false )['sub_fields'];
+
+			if ( $value ) {
+                $num_subfields = count($sub_fields);
+				if ($num_subfields > 1) {
+					echo '<table class="wp-list-table widefat fixed striped">';
+					echo '<thead><tr>';
+					foreach ( $sub_fields as $sf ) {
+						if ( in_array( $sf['type'],
+							array( 'text', 'url', 'radio', 'post_object', 'select', 'range' ) ) ) {
+							echo '<th>' . $sf['label'] . '</th>';
+						}
+					}
+					echo '</tr></thead>';
+					echo '<tbody>';
+				}
+				foreach ($value as $v) {
+					if ($num_subfields > 1) echo '<tr>';
+					foreach ( $sub_fields as $sf ) {
+						if ( in_array( $sf['type'], array( 'text', 'url', 'radio', 'post_object', 'select', 'range' ) ) ) {
+							if ($num_subfields > 1) echo '<td>';
+							if ( $sf['type'] == 'text' || $sf['type'] == 'url' || $sf['type'] == 'range' ) {
+								$value = $v[$sf['name']];
+								echo $value;
+							}
+							if ( $sf['type'] == 'radio' || ( $sf['type'] == 'select' && ! $sf['multiple'] ) ) {
+								$value = $v[$sf['name']];
+								echo $sf['choices'][ $value ];
+							}
+							if ( $sf['type'] == 'select' && $sf['multiple'] ) {
+								$values  = $v[$sf['name']];
+								if ( count( $values ) && $values ) {
+									foreach ( $values as $a ) {
+										$answers[] = $f['choices'][ $a ];
+									}
+									echo implode( '<br />', $answers );
+								}
+							}
+							if ( $sf['type'] == 'post_object' && ! $sf['multiple'] ) {
+								$value = $v[$sf['name']];
+								if ( ! is_object( $value ) ) {
+									echo $this->posts[ $f['name'] ][ $value ];
+								} else {
+									echo $value->post_title;
+								}
+							}
+							if ( $sf['type'] == 'post_object' && $sf['multiple'] ) {
+								$values  = $v[$sf['name']];
+								$answers = array();
+								if ( count( $values ) && $values ) {
+									foreach ( $values as $value ) {
+										if ( ! is_object( $value ) ) {
+											$answers[] = acf_get_post_title( $value );
+										} else {
+											$answers[] = $value->post_title;
+										}
+									}
+								}
+								echo implode( '<br />', $answers );
+							}
+							if ($num_subfields > 1) echo '</td>';
+						}
+					}
+					if ($num_subfields > 1) echo '</tr>';
+					else echo '<br />';
+                }
+				if ($num_subfields > 1) echo '</tbody></table>';
+		    }
+		}
+    }
 
 	function mt_table_sort( $columns ) {
 		foreach ($this->fields as $f) {
@@ -784,7 +867,11 @@ class MTools {
 	}
 
 	function mt_meta_boxes() {
-		add_meta_box('mtools_id', 'MTools', array($this,'mt_meta_box'), null, 'side', 'high');
+		global $post;
+
+		if ($post->post_type != 'acf-field-group') {
+			add_meta_box( 'mtools_id', 'MTools', array( $this, 'mt_meta_box' ), null, 'side', 'high' );
+		}
 	}
 
 	function mt_save_post($post_id, $post) {
