@@ -20,7 +20,7 @@ class MTools {
 			}
 		} else {
 			add_action( 'template_redirect', array( &$this, 'mt_template_redirect' ) );
-			add_action( 'pre_get_posts', array( &$this, 'mt_show_allowed_posts') );
+			//add_action( 'pre_get_posts', array( &$this, 'mt_show_allowed_posts') );
         }
 	}
 
@@ -140,7 +140,7 @@ class MTools {
 		if($plugin_file=='wp_mtools/wp_mtools.php'){
 			$wp_debug_link = '<a href="admin.php?page=mtools_info">Info</a>';
 			array_unshift($action_links,$wp_debug_link);
-			$wp_settings_link = '<a href="options-general.php?page=mtools">' . __("Settings") . '</a>';
+			$wp_settings_link = '<a href="options-general.php?page=mtools_settings">' . __("Settings") . '</a>';
 			array_unshift($action_links,$wp_settings_link);
 		}
 		return $action_links;
@@ -149,7 +149,7 @@ class MTools {
 	function mt_admin_menu() {
 		add_menu_page( 'MTools', 'MTools', 'manage_options', 'mtools', array($this,'mt_admin_welcome'));
 		add_submenu_page( 'mtools', 'MTools System Info', 'System Info', 'manage_options', 'mtools_info',array($this,'mt_admin_info') );
-		add_submenu_page( 'mtools', 'MTools PHPInfo', 'PHPInfo', 'manage_options', 'mtools_phpinfo',array($this,'mt_admin_phpinfo') );
+		if(function_exists('phpinfo')) add_submenu_page( 'mtools', 'MTools PHPInfo', 'PHPInfo', 'manage_options', 'mtools_phpinfo',array($this,'mt_admin_phpinfo') );
 		add_submenu_page( 'mtools', 'MTools Cron', 'Cron', 'manage_options', 'mtools_cron',array($this,'mt_admin_cron') );
 		add_submenu_page( 'mtools', 'MTools Post Types', 'Post Types', 'manage_options', 'mtools_posttypes',array($this,'mt_admin_posttypes') );
 		if ( is_plugin_active( 'advanced-custom-fields-pro/acf.php' ) ) {
@@ -169,9 +169,9 @@ class MTools {
 			</div>
 		<?php }
 
-		add_settings_section('mtSettingsRestriction','Content Restriction',array($this,'mt_restriction_settings_callback'),'wp_mtools');
+		//add_settings_section('mtSettingsRestriction','Content Restriction',array($this,'mt_restriction_settings_callback'),'wp_mtools');
 
-		add_settings_field('mt_checkbox_show_restricted','Show Restricted Content in Lists',array($this,'mt_checkbox_show_restricted'),'wp_mtools','mtSettingsRestriction');
+		//add_settings_field('mt_checkbox_show_restricted','Show Restricted Content in Lists',array($this,'mt_checkbox_show_restricted'),'wp_mtools','mtSettingsRestriction');
 
 		add_settings_section('mtSettingsColumns','Post List Columns',array($this,'mt_column_settings_callback'),'wp_mtools');
 
@@ -245,28 +245,31 @@ class MTools {
 	}
 
 	function mt_admin_phpinfo() {
-		// From WordPress phpinfo(): https://wordpress.org/plugins/wordpress-php-info/, by Chris Flannagan, License GPL v2
-		echo '<div class="wrap">';
-		ob_start();
-		phpinfo(-1);
-		$phpinfo_content = ob_get_contents();
-		ob_end_clean();
+		if(function_exists('exec')) {
+			// From WordPress phpinfo(): https://wordpress.org/plugins/wordpress-php-info/, by Chris Flannagan, License GPL v2
+			echo '<div class="wrap">';
+			ob_start();
+			phpinfo( - 1 );
+			$phpinfo_content = ob_get_contents();
+			ob_end_clean();
 
-		if ( ! empty( $phpinfo_content ) )
-			$phpinfo_array = explode( '<table', $phpinfo_content );
-
-		if ( ! empty( $phpinfo_array ) ) {
-			unset( $phpinfo_array[0] );
-			foreach ( $phpinfo_array as $phpinfo_element ) {
-
-				$phpinfo_element = str_replace( '<tr', '<tr valign="top"', $phpinfo_element );
-
-				echo '<table class="widefat striped" ' . $phpinfo_element;
-				echo '<div style="clear:both"></div>';
+			if ( ! empty( $phpinfo_content ) ) {
+				$phpinfo_array = explode( '<table', $phpinfo_content );
 			}
 
+			if ( ! empty( $phpinfo_array ) ) {
+				unset( $phpinfo_array[0] );
+				foreach ( $phpinfo_array as $phpinfo_element ) {
+
+					$phpinfo_element = str_replace( '<tr', '<tr valign="top"', $phpinfo_element );
+
+					echo '<table class="widefat striped" ' . $phpinfo_element;
+					echo '<div style="clear:both"></div>';
+				}
+
+			}
+			echo '</div>';
 		}
-		echo '</div>';
 	}
 
 	function mt_admin_acf() {

@@ -18,6 +18,11 @@ This is not just a plugin, it makes up for some of WordPress' lack of features.
 Changelog
 =========
 
+**1.6.1**
+
+* Disable removing of loggin required items from lists as it did not work correctly
+* Check if phpinfo is disabled
+
 **1.6.0**
 
 * Do not show MTools post options on ACF Field Groups Posts
