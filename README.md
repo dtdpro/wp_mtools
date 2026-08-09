@@ -17,6 +17,16 @@ This is not just a plugin, it makes up for some of WordPress' lack of features.
 
 Changelog
 =========
+**1.7.1**
+
+* Fix settings link
+* Remove Gravit Forms ACF field
+
+**1.7.0**
+
+* Fix activate/deactive
+* Allow for ACF regular
+* Remove phpinfo page
 
 **1.6.1**
 

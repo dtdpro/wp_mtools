@@ -11,7 +11,6 @@ class MTools {
 			add_action( 'admin_init', array( $this, 'mt_admin_init' ) );
 			add_action( 'admin_menu', array( $this, 'mt_admin_menu' ) );
 			add_action( 'wp_loaded', array( &$this, 'mt_loaded' ) );
-			add_action( 'acf/include_field_types', array( $this, 'mt_acf_gforms_field' ) );
 			add_filter( 'plugin_action_links', array( $this, 'mt_plugin_actions' ), 10, 2 );
 
 			$this->posttype = 'post';
@@ -141,7 +140,7 @@ class MTools {
 		if ( is_plugin_active( 'advanced-custom-fields-pro/acf.php' ) || is_plugin_active( 'advanced-custom-fields/acf.php' ) ) {
 			add_submenu_page( 'mtools', 'MTools ACF', 'ACF', 'manage_options', 'mtools_acf',array($this,'mt_admin_acf') );
 		}
-		add_submenu_page( 'mtools', 'MTools Settings', 'Settings', 'manage_options', 'mtools_settings',array($this,'mt_admin_settings') );
+		add_submenu_page( 'mtools', 'MTools Settings', 'Settings', 'manage_options', 'mtools_options',array($this,'mt_admin_settings') );
 
 		add_options_page('MTools Settings','MTools','manage_options','mtools_options',	array( $this, 'mt_admin_settings' ));
 	}
@@ -929,10 +928,5 @@ class MTools {
 		if ( 'user_id' == $column_name )
 			return $user_id;
 		return $value;
-	}
-
-
-	function mt_acf_gforms_field( $version ) {
-		include_once('acf_gforms_field.php');
 	}
 }

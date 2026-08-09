@@ -1,13 +1,13 @@
 <?php
 /**
  * @package WP MTools
- * @version 1.7.0
+ * @version 1.7.1
  */
 /*
 Plugin Name: MTools for WordPress
 Plugin URI: https://github.com/dtdpro/wp_mtools/
 Description: This adds extra features such as column headers for ACF Fields, Post ID, Featured Image, and User ID. Plus features for: duplicating a post, requiring login to view a post, listing cron events, post type info, ACf field info, and server info.
-Version: 1.7.0
+Version: 1.7.1
 Author: DtD Productions
 Author URI: http://dtdpro.com/
 License: GPLv2
